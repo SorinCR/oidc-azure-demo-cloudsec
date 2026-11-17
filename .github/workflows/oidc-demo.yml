@@ -1,11 +1,3 @@
-# Copy to .github/workflows/oidc-demo.yml in your repo.
-# Set these repo Variables first (Settings > Secrets and variables > Actions > Variables):
-#   AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID_TIGHT, AZURE_CLIENT_ID_LOOSE
-#
-# Push this to `main`, then create and push `demo-branch`:
-#   LOOSE job  -> succeeds on any branch
-#   TIGHT job  -> succeeds only on main, fails on demo-branch (AADSTS70021)
-
 name: oidc-demo
 
 on:
@@ -15,7 +7,7 @@ on:
       - demo-branch
 
 permissions:
-  id-token: write   # <-- this is what lets a job request the GitHub OIDC JWT
+  id-token: write
   contents: read
 
 jobs:
