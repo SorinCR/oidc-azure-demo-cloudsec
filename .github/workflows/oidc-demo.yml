@@ -1,0 +1,59 @@
+# Copy to .github/workflows/oidc-demo.yml in your repo.
+# Set these repo Variables first (Settings > Secrets and variables > Actions > Variables):
+#   AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID_TIGHT, AZURE_CLIENT_ID_LOOSE
+#
+# Push this to `main`, then create and push `demo-branch`:
+#   LOOSE job  -> succeeds on any branch
+#   TIGHT job  -> succeeds only on main, fails on demo-branch (AADSTS70021)
+
+name: oidc-demo
+
+on:
+  push:
+    branches:
+      - main
+      - demo-branch
+
+permissions:
+  id-token: write   # <-- this is what lets a job request the GitHub OIDC JWT
+  contents: read
+
+jobs:
+  show-claims:
+    name: "Show the JWT the cloud will judge"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print the subject + numeric claims
+        run: |
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
+          echo "Decoded claims the FIC matches on:"
+          echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null \
+            | jq '{sub, repository, ref, repository_owner_id, repository_id}'
+
+  loose:
+    name: "Assume LOOSE identity (any branch)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login via OIDC (loose)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_LOOSE }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Prove we got real Azure access
+        run: az group list -o table
+
+  tight:
+    name: "Assume TIGHT identity (main only)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login via OIDC (tight)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_TIGHT }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Prove we got real Azure access
+        run: az group list -o table
